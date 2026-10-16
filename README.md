@@ -46,8 +46,8 @@ dsh plugin --profile <profile 名> add dsh-boot-video-manager
 
 包已发布在 npm：**`dsh-boot-video-manager`**
 （[npmjs.com/package/dsh-boot-video-manager](https://www.npmjs.com/package/dsh-boot-video-manager)）。
-本仓库当前版本 **1.2.0**（音频自检 + 「冷启动直接出声」脚本）；npm 上的 `latest` 目前还是
-**1.0.1**，刚加的这两样要用方式 B / C 装（或等新版发布）。
+本仓库当前版本 **1.2.1**（音频自检 + 「冷启动直接出声」脚本），已同步发布到 npm
+（`npm view dsh-boot-video-manager version` 会看到 1.2.1）。
 通过 `dsh.bundle.patch`（`cordis.patch.yml`）自动挂载宿主入口，装完刷新页面即可。
 
 ### 方式 B —— 直接从 GitHub 仓库装
