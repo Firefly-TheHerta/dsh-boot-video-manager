@@ -1,6 +1,6 @@
 {
   "name": "dsh-boot-video-manager",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "管理 dsh-boot-animation 开屏视频素材池的配套插件：上传、排序、随机 / 顺序 / 单次播放列表，并在面板里搬运上游的开屏声音开关，不改 DSH 本体源码。",
   "license": "MIT",
   "author": "Firefly-TheHerta",
