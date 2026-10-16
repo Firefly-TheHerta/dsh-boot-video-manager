@@ -21,7 +21,7 @@
 - **添加视频**：从文件选择框多选，直接传进素材池（`.mp4` `.webm` `.m4v` `.mov`，单支上限 512 MB）。
 - **排序**：拖不动就用每行的 `↑` `↓`，或整列重排。
 - **三种播放方式**：`顺序播放` / `随机播放` / `单次播放`（见下）。
-- **声音开关**：把上游插件的「播放影片声音」「点鼠标直接进入」搬到这个面板里（见下「开屏声音」）。
+- **声音开关 + 音频自检**：把上游插件的「播放影片声音」「点鼠标直接进入」搬到这个面板里，并显示上次启动到底出没出声（见下「开屏声音」）。
 - **勾选参与**：不想让它出现就取消勾选，不用删文件。
 - **回收**：把某支移出播放列表（挪进 `recycle\`，可随时找回）。
 - **打开素材文件夹**：一键在资源管理器里定位。
@@ -46,7 +46,8 @@ dsh plugin --profile <profile 名> add dsh-boot-video-manager
 
 包已发布在 npm：**`dsh-boot-video-manager`**
 （[npmjs.com/package/dsh-boot-video-manager](https://www.npmjs.com/package/dsh-boot-video-manager)）。
-本仓库当前版本 **1.1.0**（新增面板上的声音开关）。
+本仓库当前版本 **1.2.0**（音频自检 + 「冷启动直接出声」脚本）；npm 上的 `latest` 目前还是
+**1.0.1**，刚加的这两样要用方式 B / C 装（或等新版发布）。
 通过 `dsh.bundle.patch`（`cordis.patch.yml`）自动挂载宿主入口，装完刷新页面即可。
 
 ### 方式 B —— 直接从 GitHub 仓库装
@@ -135,7 +136,44 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\uninstall.ps1 -Profi
 | **播放影片声音** | 尝试带声音播，右下角显示「开声音」按钮（默认） | 彻底不尝试，连按钮都不出现 |
 | **点鼠标直接进入** | 点一下画面就直接进界面，不再拿第一下去开声音 | 第一下先开声音、第二下才进界面（默认） |
 
-> 能不能出声最终取决于视频本身有没有音轨：`maid-splash.mp4` 是无声的，开了也不会有声音。
+素材池里这两支都**有音轨**（`maid-splash.mp4` 8.06 s / 1280x720 / 带音频，`绝区零蕾米埃尔.webm`
+是 VP9 + Opus 立体声），所以没声音只可能是上面这条 autoplay 规矩，不是文件的问题。
+
+#### 冷启动直接出声（不用点那一下）
+
+浏览器那道门只能从**启动参数**上绕过去：DSH 的 Electron 没有开 `autoplayPolicy`，插件本身也改不了它
+（宿主半侧跑在没有 Electron API 的子进程里）。能用的钥匙只有一条：
+
+```
+--autoplay-policy=no-user-gesture-required
+```
+
+`tools\autoplay-on.ps1` 帮你把它加到 DSH 的快捷方式上（开始菜单 / 桌面 / 任务栏固定项挨个扫），
+原始参数备份在同目录的 `.autoplay-backup.json`：
+
+```powershell
+# 先看一眼会改哪个（不改动任何东西）
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\autoplay-on.ps1 -DryRun
+
+# 加上参数
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\autoplay-on.ps1
+
+# 想回到默认策略
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\autoplay-on.ps1 -Revert
+```
+
+加完要**完全退出 DSH 再启动**（启动参数只在进程启动时读一次），之后开屏就直接带声音。
+`tools\uninstall.ps1` 卸载时会自动调一次 `-Revert`，把它摘干净。
+
+> 这条只对「从被改过的快捷方式启动」有效：直接双击 `DeepSeek Harness.exe`、或换别的启动器，
+> 还是默认策略。它不写任何注册表键，随时可以还原。
+
+#### 面板上的音频自检
+
+声音卡片底下多一行采样结果，说明**上次启动到底有没有出声**——取的是启动画面里那个 `<video>` 的
+真实状态：当时是否被静音、Chromium 的 autoplay 策略、页面有没有拿到用户手势、以及上游「开声音」
+按钮的提示文案（浏览器为什么拒）。上次是「先静音」的话这一行会直接说出来；配完上面的启动参数、
+重启 DSH，看它变成「出声了」就知道生效了。没装上游时这一行显示「上次启动的音频状态未知」。
 
 如果页面提示「没找到上游开屏插件」、或开关不出现，说明 `dsh-boot-animation` 没装，
 或者它的设置服务还没就绪（先刷新一下页面）。
@@ -197,10 +235,11 @@ POST /reveal            打开素材目录
 
 ```
 lib/index.js          宿主半侧：8 条路由 + 播放列表状态机（place / enforceAtStartup / 目录探测）
-lib/client.js         客户端半侧：注册 settings.section 导航条目「插件管理」+ 搬运上游的声音设置（手写，无需构建）
+lib/client.js         客户端半侧：注册 settings.section 导航条目「插件管理」+ 搬运上游声音设置 + 启动音频自检（手写，无需构建）
 cordis.patch.yml      bundle 层补丁：被 `dsh plugin --profile <name> add` 装进来时自动挂载宿主入口
 tools/install.ps1     桌面版（desktop profile）junction 安装脚本
-tools/uninstall.ps1   对应卸载脚本
+tools/uninstall.ps1   对应卸载脚本（顺便还原启动参数）
+tools/autoplay-on.ps1 给 DSH 快捷方式加「冷启动直接出声」的启动参数（-Revert 还原）
 test/test-bvm-host.cjs    宿主半侧行为测试（临时目录，无需 DSH 在跑）
 test/test-bvm-client.cjs  客户端半侧渲染测试（假 __ModuleLoader__ + 假 react）
 ```
@@ -243,5 +282,7 @@ node test\test-bvm-client.cjs
   磁盘上的文件和状态文件本身是好的，刷新页面、用 node 读回都正常。
 - **声音开关点了没反应 / 卡片提示要装上游插件** → 那两个开关读写的是上游 `dsh-boot-animation`
   的设置（`boot-animation` 命名空间）；没装上游、或它的设置服务当前不可用。先 F5 刷新一下。
-- **开机启动没声音** → 浏览器的自动播放限制，不是配置问题，见上文「开屏声音」；
-  想启动时彻底安静就把「播放影片声音」关掉。
+- **开机启动没声音** → 浏览器的自动播放限制，不是配置问题。想连那一下点击都免掉，见上文
+  「冷启动直接出声」（`tools\autoplay-on.ps1`）；想启动时彻底安静就把「播放影片声音」关掉。
+- **面板上「上次启动的音频状态」显示未知** → 那一行是启动画面留在浏览器里的采样；没装上游、
+  或这支 DSH 窗口没经过开屏（例如刷新过页面）都会显示未知，正常。

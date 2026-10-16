@@ -332,6 +332,8 @@ async function main() {
     .join(' ')
   assert.ok(soundText.includes('<settings.bootVideoManager:soundPlayHint>'), '开着声音时要说明浏览器限制')
   assert.ok(soundText.includes('<settings.bootVideoManager:soundBoot>'), '要说明开机自启为什么没声音')
+  assert.ok(soundText.includes('<settings.bootVideoManager:audioDiagUnknown>'),
+    '还没采到音频自检结果时，要说「没采到样」')
   console.log('声音卡片 #2    : 两个开关 + 浏览器自动播放说明')
 
   // 点「播放影片声音 → 关」：应该走 form.set('sound', false)
@@ -358,6 +360,38 @@ async function main() {
     .join(' ')
   assert.ok(mutedText.includes('<settings.bootVideoManager:soundPlayOffHint>'), '关掉后应显示「已彻底静音」')
   console.log('声音卡片 #3    : 点「关」写进上游设置，文案跟着变')
+
+  /* ------------------------------------------------------------ 音频自检 */
+  // 采样结果是「这次启动先静音了」：卡片要把它说出来，而不是只留着设置开关。
+  // 注意假 hooks 的脾气：render() 会把 hookIndex 归零，而 useState 只在槽位不存在时
+  // 才调 getSnapshot()。所以换了 props.diag 之后要先渲染一次（这次渲染才登记属于新
+  // port 的 effect），再跑 effect 把快照写回槽位，最后再渲染才看得到新文案。
+  const textOf = (tree0) => collect(tree0)
+    .map((node) => (node.children || []).filter((child) => typeof child === 'string').join(''))
+    .join(' ')
+  props.diag = {
+    getSnapshot: () => ({
+      ready: true, audible: false, policy: 'allowed-muted',
+      active: false, everActive: false, reason: 'refused', at: '2026-10-16T00:00:00.000Z',
+    }),
+    subscribe: () => () => {},
+  }
+  render(component, props)
+  for (const effect of effects) await effect()
+  assert.ok(textOf(render(component, props)).includes('<settings.bootVideoManager:audioDiagMuted>'),
+    '采样到「先静音」时卡片要说出来')
+  props.diag = {
+    getSnapshot: () => ({
+      ready: true, audible: true, policy: 'allowed',
+      active: true, everActive: true, reason: '', at: '2026-10-16T00:00:00.000Z',
+    }),
+    subscribe: () => () => {},
+  }
+  render(component, props)
+  for (const effect of effects) await effect()
+  assert.ok(textOf(render(component, props)).includes('<settings.bootVideoManager:audioDiagOn>'),
+    '采样到「出声了」时卡片要说出来')
+  console.log('音频自检       : 「先静音」「出声了」两种采样都能显示')
 
   console.log('\n客户端半侧渲染测试通过。')
 }

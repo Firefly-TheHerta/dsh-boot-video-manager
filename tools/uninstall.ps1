@@ -2,6 +2,7 @@
 #
 #   1. drops the `- insert:` block that mounts this plugin from cordis.patch.yml
 #   2. removes the junction in <profile>/node_modules
+#   3. puts the DSH shortcut back if autoplay-on.ps1 had added the autoplay switch
 #
 # The plugin source directory and the splash clips are never touched.
 # ASCII only (PowerShell 5.1 without BOM reads .ps1 as ANSI).
@@ -51,6 +52,16 @@ if (Test-Path -LiteralPath $link) {
 }
 else {
     Write-Host "link     no $link, nothing to do"
+}
+
+# 3. autoplay switch ---------------------------------------------------------
+$autoplayScript = Join-Path $PSScriptRoot 'autoplay-on.ps1'
+$autoplayBackup = Join-Path $PSScriptRoot '.autoplay-backup.json'
+if ((Test-Path -LiteralPath $autoplayBackup) -and (Test-Path -LiteralPath $autoplayScript)) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $autoplayScript -Revert
+}
+else {
+    Write-Host "autoplay no shortcut change to revert"
 }
 
 Write-Host ''

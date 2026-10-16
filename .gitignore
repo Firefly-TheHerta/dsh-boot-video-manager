@@ -10,3 +10,6 @@ test/tmp-bvm/
 
 # npm pack 产物（发布残留，不入库）
 *.tgz
+
+# autoplay-on.ps1 记的快捷方式原始参数（每台机器不一样，不入库）
+tools/.autoplay-backup.json
