@@ -1,0 +1,5 @@
+# npm 包只发 `files` 白名单里的目录，这里把白名单内的机器相关文件再排掉。
+#
+# tools/.autoplay-backup.json 是 autoplay-on.ps1 在**这台机器**上记的快捷方式原始参数
+# （每台机器的路径都不一样），属于运行时状态，不该跟着包发出去。
+tools/.autoplay-backup.json
