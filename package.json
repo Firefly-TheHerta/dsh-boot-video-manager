@@ -22,9 +22,11 @@
   },
   "files": [
     "lib",
-    "tools",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "tools/install.ps1",
+    "tools/uninstall.ps1",
+    "tools/autoplay-on.ps1"
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

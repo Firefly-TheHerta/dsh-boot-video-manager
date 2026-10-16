@@ -261,8 +261,11 @@ node test\test-bvm-client.cjs
 用任意 Node ≥ 20 即可，不需要 DSH 在跑；两个脚本都跑完会打印一行「…测试通过」并以 0 退出。
 宿主测试用的临时素材目录是 `test\tmp-bvm\`（已 gitignore，随手删掉没关系）。
 
-`test\` 只跟着仓库走，不进 npm 包 —— `package.json` 的 `files` 白名单只发
-`lib`、`tools`、`cordis.patch.yml` 和 `README.md`。
+`test\` 只跟着仓库走，不进 npm 包 —— `package.json` 的 `files` 白名单写的是具体文件：
+`lib\`、`cordis.patch.yml`、`README.md`，以及 `tools\install.ps1`、`tools\uninstall.ps1`、
+`tools\autoplay-on.ps1`。（写死文件名而不是整个 `tools\`，就是为了别把 `autoplay-on.ps1` 在
+本机生成的 `tools\.autoplay-backup.json` 一起发出去 —— npm 的 `files` 属于「一定会包含」，
+`.npmignore` 排不掉它。）
 
 ---
 
