@@ -212,23 +212,3 @@ node test\test-bvm-client.cjs
   也不允许一个都不留。
 - **中文文件名在面板里显示乱码** → 这是 PowerShell 5.1 把 UTF-8 当 ANSI 读导致的**显示问题**，
   磁盘上的文件和状态文件本身是好的，刷新页面、用 node 读回都正常。
-
----
-
-## 发布到 npm（给维护者）
-
-```bash
-npm version patch        # 改版本号并打 tag
-npm publish --access public
-```
-
-`package.json` 里已经去掉了 `private`、带了 `repository` / `engines.node` / `dsh.bundle.patch`，
-`files` 白名单只发 `lib`、`tools`、`cordis.patch.yml` 和 `README.md`（`state/`、`_probe/` 都不发）。
-
-**账号开了「发布需 2FA」时**：`npm publish` 会回 `EOTP`。若 2FA 是密码管理器里的
-**通行密钥 / Face ID**（没有 6 位码可填），CLI 的交互提示用不上，得走 npm 的网页授权：
-`npm login --auth-type=web` 拿到链接、浏览器确认后，再把 `otp` 传给 `publish`
-（`libnpmpublish` 需要显式带 `npm-auth-type: web` 请求头，registry 才会在 401 body 里
-返回 `authUrl` / `doneUrl`）。
-
-发布后 `dsh plugin --profile <profile 名> add dsh-boot-video-manager` 即可用（方式 A）。
