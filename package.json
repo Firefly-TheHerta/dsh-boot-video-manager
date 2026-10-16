@@ -1,0 +1,26 @@
+{
+  "name": "dsh-boot-video-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "在「设置 → 内置插件」里管理 dsh-boot-animation 开屏视频素材池的配套插件",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "tools/install.ps1",
+    "tools/uninstall.ps1",
+    "README.md"
+  ],
+  "license": "MIT"
+}
