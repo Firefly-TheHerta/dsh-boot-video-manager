@@ -85,9 +85,50 @@ assert.strictEqual(mod.NS, 'settings.bootVideoManager')
 assert.deepStrictEqual(mod.inject, ['slots', 'locale'])
 
 /* ------------------------------------------------------------------ apply/slot */
+/* ------------------------------------------------- 假的设置服务（configForms） */
+// 上游「启动动画」插件（dsh-boot-animation）的设置：声音开关就存在这里。
+const BOOT_SETTINGS = { sound: true, clickToEnter: false }
+const formListeners = []
+const setCalls = []
+const fakeForm = {
+  getSnapshot: () => ({
+    status: 'ready', writable: true, revision: 1, value: Object.assign({}, BOOT_SETTINGS),
+  }),
+  subscribe: (listener) => {
+    formListeners.push(listener)
+    return () => {
+      const index = formListeners.indexOf(listener)
+      if (index >= 0) formListeners.splice(index, 1)
+    }
+  },
+  set: (field, value) => {
+    setCalls.push(field + '=' + String(value))
+    BOOT_SETTINGS[field] = value
+    formListeners.slice().forEach((listener) => listener())
+    return Promise.resolve(true)
+  },
+}
+const fakeForms = {
+  get: (id) => {
+    assert.strictEqual(id, 'boot-animation', '只应该读上游「启动动画」插件的命名空间')
+    return fakeForm
+  },
+  whileServed: (namespaces, register) => {
+    assert.deepStrictEqual(namespaces, ['boot-animation'])
+    return register(new Set(namespaces))
+  },
+}
+const fakeOwner = {
+  get: (name) => (name === 'configForms' ? fakeForms : undefined),
+  effect: (fn) => { fn(); return () => {} },
+}
+// ctx.inject 故意先不回调：先看「设置服务还没到」时面板长什么样，后面再手工接上。
+const injectCalls = []
+
 const registered = []
 const ctx = {
   effect: (fn) => fn(),
+  inject: (deps, fn) => { injectCalls.push({ deps, fn }); return () => {} },
   locale: {
     register: (ns, dict) => {
       console.log('locale.register:', ns, '=>', Object.keys(dict).join(','))
@@ -260,6 +301,63 @@ async function main() {
   assert.strictEqual(
     legacyNodes.filter((node) => (node.children || []).includes('<settings.bootVideoManager:setNext>')).length, 0)
   console.log('旧宿主兼容     : 提示重启 DSH，并列出已有素材')
+
+  /* ------------------------------------------------------------ 声音卡片 */
+  // 还没接上设置服务：卡片在，但只提示去装上游插件，不该出现开关
+  const earlyGroups = byClass('bvm-group').map((node) => node.children[0])
+  assert.ok(earlyGroups.includes('<settings.bootVideoManager:soundTitle>'), '声音卡片的标题应该在')
+  assert.strictEqual(
+    nodes.filter((node) => node.type === 'button'
+      && (node.children || []).includes('<settings.bootVideoManager:on>')).length,
+    0, '没接上设置服务时不该有声音开关')
+  assert.ok(texts.join(' ').includes('<settings.bootVideoManager:soundMissing>'),
+    '没接上设置服务时应提示装上游插件')
+  console.log('声音卡片 #1    : 还没接上设置服务 -> 提示安装上游插件')
+
+  // 手工把设置服务接上（真实环境里 ctx.inject 会自己回调），再渲染
+  assert.strictEqual(injectCalls.length, 1, 'apply() 应该用动态 inject 等 configForms')
+  assert.deepStrictEqual(injectCalls[0].deps, ['configForms'])
+  injectCalls[0].fn(fakeOwner)
+  const soundPort = props.sound
+  assert.strictEqual(soundPort.getSnapshot().ready, true, '接上后 port 应该 ready')
+  for (const effect of effects) await effect()
+  const soundNodes = collect(render(component, props))
+  const soundSelected = soundNodes
+    .filter((node) => node.props && node.props.className === 'bvm-seg-on')
+    .map((node) => node.children[0])
+  assert.ok(soundSelected.includes('<settings.bootVideoManager:on>'), 'sound=true 时「开」应该选中')
+  assert.ok(soundSelected.includes('<settings.bootVideoManager:off>'), 'clickToEnter=false 时「关」应该选中')
+  const soundText = soundNodes
+    .map((node) => (node.children || []).filter((child) => typeof child === 'string').join(''))
+    .join(' ')
+  assert.ok(soundText.includes('<settings.bootVideoManager:soundPlayHint>'), '开着声音时要说明浏览器限制')
+  assert.ok(soundText.includes('<settings.bootVideoManager:soundBoot>'), '要说明开机自启为什么没声音')
+  console.log('声音卡片 #2    : 两个开关 + 浏览器自动播放说明')
+
+  // 点「播放影片声音 → 关」：应该走 form.set('sound', false)
+  const soundCard = soundNodes.find((node) => node.props && node.props.className === 'bvm-card'
+    && (node.children || []).some((child) => child && child.children
+      && child.children.includes('<settings.bootVideoManager:soundTitle>')))
+  assert.ok(soundCard !== undefined, '应该能找到声音卡片')
+  const soundButtons = collect(soundCard).filter((node) => node.type === 'button')
+  assert.deepStrictEqual(soundButtons.map((node) => node.children[0]), [
+    '<settings.bootVideoManager:on>', '<settings.bootVideoManager:off>',
+    '<settings.bootVideoManager:on>', '<settings.bootVideoManager:off>',
+  ], '声音卡片应有「播放影片声音」「点鼠标直接进入」两组开关')
+  soundButtons[1].props.onClick()
+  await new Promise((resolve) => setTimeout(resolve, 10))
+  assert.deepStrictEqual(setCalls, ['sound=false'], '点「关」应该写 sound=false')
+  for (const effect of effects) await effect()
+  const mutedNodes = collect(render(component, props))
+  const mutedSelected = mutedNodes
+    .filter((node) => node.props && node.props.className === 'bvm-seg-on')
+    .map((node) => node.children[0])
+  assert.ok(mutedSelected.includes('<settings.bootVideoManager:off>'), '关掉后应该选中「关」')
+  const mutedText = mutedNodes
+    .map((node) => (node.children || []).filter((child) => typeof child === 'string').join(''))
+    .join(' ')
+  assert.ok(mutedText.includes('<settings.bootVideoManager:soundPlayOffHint>'), '关掉后应显示「已彻底静音」')
+  console.log('声音卡片 #3    : 点「关」写进上游设置，文案跟着变')
 
   console.log('\n客户端半侧渲染测试通过。')
 }
