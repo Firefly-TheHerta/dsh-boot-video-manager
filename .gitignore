@@ -4,3 +4,6 @@ state/
 # 依赖与日志
 node_modules/
 *.log
+
+# 测试用的临时素材目录
+test/tmp-bvm/

@@ -172,6 +172,8 @@ lib/client.js         客户端半侧：注册 settings.section 导航条目「�
 cordis.patch.yml      bundle 层补丁：被 `dsh plugin --profile <name> add` 装进来时自动挂载宿主入口
 tools/install.ps1     桌面版（desktop profile）junction 安装脚本
 tools/uninstall.ps1   对应卸载脚本
+test/test-bvm-host.cjs    宿主半侧行为测试（临时目录，无需 DSH 在跑）
+test/test-bvm-client.cjs  客户端半侧渲染测试（假 __ModuleLoader__ + 假 react）
 ```
 
 客户端半侧没有任何构建步骤——`lib/client.js` 就是手写的、可直接被
@@ -183,12 +185,16 @@ tools/uninstall.ps1   对应卸载脚本
 
 ```powershell
 # 宿主半侧：临时目录里跑完整播放列表状态机（含 3 次「启动」验证顺序推进）
-& 'D:\nodejs\node.exe' .\_probe\test-bvm-host.cjs
+node test\test-bvm-host.cjs
 # 客户端半侧：假 __ModuleLoader__ + 假 react，渲染并检查 UI 结构
-& 'D:\nodejs\node.exe' .\_probe\test-bvm-client.cjs
+node test\test-bvm-client.cjs
 ```
 
-（测试脚本在 `_probe\` 里，不在 npm 包里；用任意 Node ≥ 20 即可。）
+用任意 Node ≥ 20 即可，不需要 DSH 在跑；两个脚本都跑完会打印一行「…测试通过」并以 0 退出。
+宿主测试用的临时素材目录是 `test\tmp-bvm\`（已 gitignore，随手删掉没关系）。
+
+`test\` 只跟着仓库走，不进 npm 包 —— `package.json` 的 `files` 白名单只发
+`lib`、`tools`、`cordis.patch.yml` 和 `README.md`。
 
 ---
 
