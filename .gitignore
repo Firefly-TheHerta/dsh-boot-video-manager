@@ -7,3 +7,6 @@ node_modules/
 
 # 测试用的临时素材目录
 test/tmp-bvm/
+
+# npm pack 产物（发布残留，不入库）
+*.tgz
