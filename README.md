@@ -27,16 +27,23 @@
 
 ## 安装
 
-三种方式，按需选一种。
+三种方式，按需选一种。**前两条命令里的 `--profile <profile 名>` 是必需参数** —— `dsh plugin`
+少了它会直接报错 `error: required option '--profile <name>' not specified`。profile 名就是
+`%USERPROFILE%\.dsh\profiles\` 下的目录名，查一下：
 
-### 方式 A —— npm（推荐，发布后可用）
-
-```bash
-dsh plugin add dsh-boot-video-manager
+```powershell
+Get-ChildItem "$env:USERPROFILE\.dsh\profiles" -Directory | Select-Object -ExpandProperty Name
 ```
 
-包名是 `dsh-boot-video-manager`，通过 `dsh.bundle.patch`（`cordis.patch.yml`）自动挂载宿主入口，
-装完刷新页面即可。发布到 npm registry 之前，这条命令会提示找不到包，届时先走方式 B / C。
+### 方式 A —— 从 npm 装（推荐）
+
+```bash
+dsh plugin --profile <profile 名> add dsh-boot-video-manager
+```
+
+包已发布在 npm：**`dsh-boot-video-manager@1.0.0`**
+（[npmjs.com/package/dsh-boot-video-manager](https://www.npmjs.com/package/dsh-boot-video-manager)）。
+通过 `dsh.bundle.patch`（`cordis.patch.yml`）自动挂载宿主入口，装完刷新页面即可。
 
 ### 方式 B —— 直接从 GitHub 仓库装
 
@@ -44,11 +51,14 @@ dsh plugin add dsh-boot-video-manager
 dsh plugin --profile <你的 profile 名> add github:Firefly-TheHerta/dsh-boot-video-manager
 ```
 
-同样由 `cordis.patch.yml` 自动挂载，不需要手改配置文件。
+同样由 `cordis.patch.yml` 自动挂载，不需要手改配置文件。git 来源的包会走它自己的 `prepare`
+脚本构建，本插件没有构建步骤（`lib/client.js` 是手写的成品），所以和方式 A 等价。
 
 ### 方式 C —— 桌面版（`desktop` profile）junction 脚本
 
-桌面版 profile 被 Electron 独占，`dsh plugin add` 不允许直接改它，所以走脚本：
+`desktop` 这个 profile 由 Electron 应用独占管理，官方说法是**先完全退出 DSH** 再对它执行
+`dsh plugin --profile desktop ...`（profile 的 `package.json` 被应用锁着）。不想退出、或者只是拿
+本地这份代码调试，就走脚本建 junction：
 
 ```powershell
 # 安装（profile 默认 desktop）
@@ -60,7 +70,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\uninstall.ps1 -Profi
 
 `install.ps1` 只做三件事：在 profile 的 `node_modules` 里建一个指向本目录的
 **junction**、备份 `cordis.patch.yml`、往里追加一段 `- insert:` 挂载项（`id: boot-video-manager`）。
-不改 `package.json`、不跑 pnpm。
+不改 `package.json`、不跑 pnpm —— 所以它**不会**出现在 `dsh plugin --profile desktop list` 的输出里，
+这是正常的（pnpm 只认 `package.json` 里记过的依赖）。
 
 ---
 
@@ -158,7 +169,7 @@ POST /reveal            打开素材目录
 ```
 lib/index.js          宿主半侧：8 条路由 + 播放列表状态机（place / enforceAtStartup / 目录探测）
 lib/client.js         客户端半侧：注册 settings.section 导航条目「插件管理」（手写，无需构建）
-cordis.patch.yml      bundle 层补丁：`dsh plugin add` 时自动挂载宿主入口
+cordis.patch.yml      bundle 层补丁：被 `dsh plugin --profile <name> add` 装进来时自动挂载宿主入口
 tools/install.ps1     桌面版（desktop profile）junction 安装脚本
 tools/uninstall.ps1   对应卸载脚本
 ```
@@ -201,10 +212,17 @@ tools/uninstall.ps1   对应卸载脚本
 ## 发布到 npm（给维护者）
 
 ```bash
-npm login
+npm version patch        # 改版本号并打 tag
 npm publish --access public
 ```
 
-发布后 `dsh plugin add dsh-boot-video-manager` 即可用（方式 A）。`package.json` 里已经
-去掉了 `private`、带了 `repository` / `engines.node` / `dsh.bundle.patch`，`files` 白名单
-只发 `lib`、`tools`、`cordis.patch.yml` 和 `README.md`。
+`package.json` 里已经去掉了 `private`、带了 `repository` / `engines.node` / `dsh.bundle.patch`，
+`files` 白名单只发 `lib`、`tools`、`cordis.patch.yml` 和 `README.md`（`state/`、`_probe/` 都不发）。
+
+**账号开了「发布需 2FA」时**：`npm publish` 会回 `EOTP`。若 2FA 是密码管理器里的
+**通行密钥 / Face ID**（没有 6 位码可填），CLI 的交互提示用不上，得走 npm 的网页授权：
+`npm login --auth-type=web` 拿到链接、浏览器确认后，再把 `otp` 传给 `publish`
+（`libnpmpublish` 需要显式带 `npm-auth-type: web` 请求头，registry 才会在 401 body 里
+返回 `authUrl` / `doneUrl`）。
+
+发布后 `dsh plugin --profile <profile 名> add dsh-boot-video-manager` 即可用（方式 A）。
