@@ -1,26 +1,40 @@
 {
   "name": "dsh-boot-video-manager",
   "version": "1.0.0",
-  "private": true,
-  "description": "在「设置 → 内置插件」里管理 dsh-boot-animation 开屏视频素材池的配套插件",
+  "description": "管理 dsh-boot-animation 开屏视频素材池的配套插件：上传、排序、随机 / 顺序 / 单次播放列表，不改 DSH 本体源码。",
+  "license": "MIT",
+  "author": "Firefly-TheHerta",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Firefly-TheHerta/dsh-boot-video-manager.git"
+  },
+  "homepage": "https://github.com/Firefly-TheHerta/dsh-boot-video-manager#readme",
+  "bugs": {
+    "url": "https://github.com/Firefly-TheHerta/dsh-boot-video-manager/issues"
+  },
   "type": "module",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "tools",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
   },
   "dsh": {
     "client": {
       "platform": "web"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
     }
-  },
-  "files": [
-    "lib/index.js",
-    "lib/client.js",
-    "tools/install.ps1",
-    "tools/uninstall.ps1",
-    "README.md"
-  ],
-  "license": "MIT"
+  }
 }

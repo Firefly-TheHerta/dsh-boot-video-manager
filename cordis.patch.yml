@@ -1,0 +1,11 @@
+# dsh-boot-video-manager bundle layer: mounted by `dsh plugin add`, so a profile
+# gets this row without manual cordis.patch.yml edits. A profile-level patch can
+# still disable the row by id.
+#
+# This is the management half for dsh-boot-animation. It only inserts its own
+# host entry (id: boot-video-manager); the upstream `boot-animation` row is
+# added by dsh-boot-animation's own patch.
+
+- insert:
+    - id: boot-video-manager
+      name: dsh-boot-video-manager
