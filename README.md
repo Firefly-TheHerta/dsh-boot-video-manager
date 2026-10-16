@@ -6,6 +6,8 @@
 > 上游插件自己的设置卡片只能开关、调淡入时长、勾选素材池，
 > **没法把新视频放进去、也没法决定先后**。这个插件补的就是这两块。
 
+![设置 → 插件管理里的「开屏视频播放列表」面板](assets/screenshots/plugin-panel.png)
+
 ---
 
 ## 前置要求
@@ -41,7 +43,7 @@ Get-ChildItem "$env:USERPROFILE\.dsh\profiles" -Directory | Select-Object -Expan
 dsh plugin --profile <profile 名> add dsh-boot-video-manager
 ```
 
-包已发布在 npm：**`dsh-boot-video-manager@1.0.0`**
+包已发布在 npm：**`dsh-boot-video-manager@1.0.1`**
 （[npmjs.com/package/dsh-boot-video-manager](https://www.npmjs.com/package/dsh-boot-video-manager)）。
 通过 `dsh.bundle.patch`（`cordis.patch.yml`）自动挂载宿主入口，装完刷新页面即可。
 
