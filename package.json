@@ -24,6 +24,7 @@
     "lib",
     "cordis.patch.yml",
     "README.md",
+    "CHANGELOG.md",
     "tools/install.ps1",
     "tools/uninstall.ps1",
     "tools/autoplay-on.ps1"
