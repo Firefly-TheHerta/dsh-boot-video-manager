@@ -1,7 +1,11 @@
 # Let the boot splash play sound on a cold start (no click needed).
 #
 # Chromium refuses audible autoplay until a page has had a user gesture, and the
-# splash screen runs before any click. So the desktop app has to be launched with
+# splash screen runs before any click. That rule is not what silences this machine's
+# cold start -- the screen used to mute itself 1.2s into a slow first play(), which
+# is fixed in dsh-boot-animation -- but it is the remaining way a policy refusal can
+# silence one, and a launch switch is the only lever a plugin has. So the desktop app
+# can be launched with
 #
 #     --autoplay-policy=no-user-gesture-required
 #
@@ -38,6 +42,11 @@ function Get-ShortcutDirs {
         (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'),
         (Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar'),
         (Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch'),
+        # The Desktop shell folder can be redirected anywhere -- on the machine this
+        # was written on it points at D:\<name> -- so a literal %USERPROFILE%\Desktop
+        # alone finds nothing on exactly the machines that moved it.
+        [Environment]::GetFolderPath('Desktop'),
+        [Environment]::GetFolderPath('CommonDesktopDirectory'),
         (Join-Path $env:USERPROFILE 'Desktop'),
         (Join-Path $env:USERPROFILE 'OneDrive\Desktop'),
         (Join-Path $env:PUBLIC 'Desktop')
