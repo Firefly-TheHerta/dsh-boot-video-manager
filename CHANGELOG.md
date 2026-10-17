@@ -1,5 +1,10 @@
 # 更新记录
 
+## 1.3.1
+
+- 只改包信息，代码与 1.3.0 相同：`description` 写清「开屏声音开关 + 音频自检状态条 + 自动补好旧版动画插件的冷启动修复」，
+  并补上 npm 的 `keywords`（dsh / deepseek-harness / boot-animation / splash-screen / audio），方便被搜到。
+
 ## 1.3.0
 
 - **装了这个插件就一次能用**：宿主半侧启动时检查已安装的 `dsh-boot-animation`，发现是没修过的旧版，

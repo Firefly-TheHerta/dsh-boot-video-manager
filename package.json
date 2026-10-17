@@ -1,7 +1,16 @@
 {
   "name": "dsh-boot-video-manager",
   "version": "1.3.0",
-  "description": "管理 dsh-boot-animation 开屏视频素材池的配套插件：上传、排序、随机 / 顺序 / 单次播放列表，并在面板里搬运上游的开屏声音开关，不改 DSH 本体源码。",
+  "description": "DSH 开屏动画的配套插件：管理开屏视频播放列表（顺序/随机/单次），带开屏声音开关和音频自检状态条，并会自动补好旧版动画插件「开机第一次没声音」的修复。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "boot-animation",
+    "splash-screen",
+    "audio",
+    "cold-start"
+  ],
   "license": "MIT",
   "author": "Firefly-TheHerta",
   "repository": {
