@@ -332,8 +332,8 @@ async function main() {
     .join(' ')
   assert.ok(soundText.includes('<settings.bootVideoManager:soundPlayHint>'), '开着声音时要说明浏览器限制')
   assert.ok(soundText.includes('<settings.bootVideoManager:soundBoot>'), '要说明开机自启为什么没声音')
-  assert.ok(soundText.includes('<settings.bootVideoManager:audioDiagUnknown>'),
-    '还没采到音频自检结果时，要说「没采到样」')
+  assert.ok(soundText.includes('<settings.bootVideoManager:audioStateUnknown>'),
+    '还没采到音频自检结果时，要说「没采到结论」')
   console.log('声音卡片 #2    : 两个开关 + 浏览器自动播放说明')
 
   // 点「播放影片声音 → 关」：应该走 form.set('sound', false)
@@ -362,36 +362,74 @@ async function main() {
   console.log('声音卡片 #3    : 点「关」写进上游设置，文案跟着变')
 
   /* ------------------------------------------------------------ 音频自检 */
-  // 采样结果是「这次启动先静音了」：卡片要把它说出来，而不是只留着设置开关。
+  // 面板按「上次开屏的结论」显示一行带颜色点的状态，结论来自启动动画写下的 data-sound。
   // 注意假 hooks 的脾气：render() 会把 hookIndex 归零，而 useState 只在槽位不存在时
   // 才调 getSnapshot()。所以换了 props.diag 之后要先渲染一次（这次渲染才登记属于新
   // port 的 effect），再跑 effect 把快照写回槽位，最后再渲染才看得到新文案。
   const textOf = (tree0) => collect(tree0)
     .map((node) => (node.children || []).filter((child) => typeof child === 'string').join(''))
     .join(' ')
-  props.diag = {
-    getSnapshot: () => ({
-      ready: true, audible: false, policy: 'allowed-muted',
-      active: false, everActive: false, reason: 'refused', at: '2026-10-16T00:00:00.000Z',
-    }),
-    subscribe: () => () => {},
+  const diagText = async (record) => {
+    props.diag = { getSnapshot: () => record, subscribe: () => () => {} }
+    render(component, props)
+    for (const effect of effects) await effect()
+    return textOf(render(component, props))
   }
-  render(component, props)
-  for (const effect of effects) await effect()
-  assert.ok(textOf(render(component, props)).includes('<settings.bootVideoManager:audioDiagMuted>'),
-    '采样到「先静音」时卡片要说出来')
-  props.diag = {
-    getSnapshot: () => ({
-      ready: true, audible: true, policy: 'allowed',
-      active: true, everActive: true, reason: '', at: '2026-10-16T00:00:00.000Z',
-    }),
-    subscribe: () => () => {},
+  const dig = (record) => ({
+    ready: true,
+    audible: record.audible,
+    outcome: record.outcome || '',
+    elapsedMs: record.elapsedMs === undefined ? null : record.elapsedMs,
+    policy: '',
+    active: false,
+    everActive: false,
+    reason: record.reason || '',
+    at: '2026-10-16T00:00:00.000Z',
+  })
+  const mutedDiag = await diagText(dig({ audible: false, outcome: 'muted', elapsedMs: 5000, reason: '点一下打开声音' }))
+  assert.ok(mutedDiag.includes('<settings.bootVideoManager:audioStateMuted>'), '静音（设备没醒）时要说出来')
+  assert.ok(mutedDiag.includes('(5.0s)'), '要带等待了多久')
+  const onDiag = await diagText(dig({ audible: true, outcome: 'on', elapsedMs: 820, reason: '点一下关闭声音' }))
+  assert.ok(onDiag.includes('<settings.bootVideoManager:audioStateOn>'), '出声了时要说出来')
+  assert.ok(onDiag.includes('(0.8s)'), '出声时要带用了几秒')
+  const lateDiag = await diagText(dig({ audible: true, outcome: 'late', elapsedMs: 6500 }))
+  assert.ok(lateDiag.includes('<settings.bootVideoManager:audioStateLate>'), '重试接回声音时要说出来')
+  const refusedDiag = await diagText(dig({ audible: false, outcome: 'muted', elapsedMs: 5000, reason: '浏览器拒绝了声音，点一下重试' }))
+  assert.ok(refusedDiag.includes('<settings.bootVideoManager:audioStateRefused>'), '浏览器拒绝时要说出来')
+  const offDiag = await diagText(dig({ audible: false, outcome: '', reason: 'no-sound-button' }))
+  assert.ok(offDiag.includes('<settings.bootVideoManager:audioStateOff>'), '声音开关关掉时要说出来')
+  const legacyDiag = await diagText(dig({ audible: false, outcome: '', reason: 'no-sound-marker' }))
+  assert.ok(legacyDiag.includes('<settings.bootVideoManager:audioStateLegacy>'), '旧版动画插件没写标记时要说出来')
+  console.log('音频自检       : 出声 / 静音 / 重试接回 / 被拒绝 / 开关关掉 / 旧版插件 六种结论都能显示')
+
+  /* --------------------------------------------------- 音频采样（真端口） */
+  // 用真的 createAudioDiag 走一遍：结论要读 .dshba[data-sound]（动画插件自己写的标记），
+  // 不能只看元素当下静没静音 —— 元素在等音频管线时可能还是「未静音」。
+  const diagPort = descriptor.inject().diag
+  assert.ok(diagPort && typeof diagPort.start === 'function', 'slot 应该注入真的音频自检端口')
+  const fakeVideo = { readyState: 3, paused: false, muted: false }
+  let fakeMarker = 'on:820'
+  fakeDocument.querySelector = (selector) => {
+    if (selector === '.dshba-video') return fakeVideo
+    if (selector === '.dshba') return { getAttribute: (name) => (name === 'data-sound' ? fakeMarker : null) }
+    if (selector === '.dshba-sound') return { title: '点一下关闭声音' }
+    return null
   }
-  render(component, props)
-  for (const effect of effects) await effect()
-  assert.ok(textOf(render(component, props)).includes('<settings.bootVideoManager:audioDiagOn>'),
-    '采样到「出声了」时卡片要说出来')
-  console.log('音频自检       : 「先静音」「出声了」两种采样都能显示')
+  globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+  diagPort.start()
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  const snapped = diagPort.getSnapshot()
+  assert.strictEqual(snapped.ready, true, '采样应该收下这次开屏')
+  assert.strictEqual(snapped.outcome, 'on', '结论应该读 data-sound 里的 on；实际: ' + JSON.stringify(snapped))
+  assert.strictEqual(snapped.elapsedMs, 820, '毫秒数要一起记下来')
+  assert.strictEqual(snapped.audible, true, 'on 表示有声')
+  fakeMarker = 'muted:5000'
+  diagPort.start()
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  const mutedSnap = diagPort.getSnapshot()
+  assert.strictEqual(mutedSnap.outcome, 'muted', '标记换成 muted 后结论要跟着变')
+  assert.strictEqual(mutedSnap.audible, false, 'muted 表示没声')
+  console.log('音频采样       : 读 data-sound（on / muted）并按毫秒判有声')
 
   console.log('\n客户端半侧渲染测试通过。')
 }
